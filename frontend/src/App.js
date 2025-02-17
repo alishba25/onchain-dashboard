@@ -46,6 +46,16 @@ const App = () => {
         }
     };
 
+    const renderCandlestickChart = (transactions) => {
+        console.log("Rendering candlestick chart...", transactions);
+        // Your chart logic here
+    };
+
+    const renderPieChart = (transactions) => {
+        console.log("Rendering pie chart...", transactions);
+        // Your chart logic here
+    };
+
     return (
         <div className="container">
             <h1 className="text-center">Ethereum Wallet Dashboard</h1>
