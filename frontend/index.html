@@ -1,0 +1,71 @@
+<!-- frontend/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereum Wallet Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Ensure this line is present -->
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script> <!-- Include Web3.js -->
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            margin: 20px 0;
+        }
+        canvas {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Ethereum Wallet Dashboard</h1>
+        <div class="form-group">
+            <label for="walletAddress">Enter Ethereum Wallet Address:</label>
+            <input type="text" id="walletAddress" class="form-control" placeholder="0x...">
+        </div>
+        <button id="fetchData" class="btn btn-primary">Fetch Wallet Data</button>
+
+        <div id="walletBalance" class="card" style="display:none;">
+            <div class="card-body">
+                <h5 class="card-title">Wallet Balance: <span id="balance"></span> ETH</h5>
+                <select id="currency" class="form-control">
+                    <option value="USD">USD</option>
+                    <option value="INR">INR</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="position: relative; width: 100%; height: 300px;">
+            <canvas id="candlestickChart" style="position: absolute; top: 0; left: 0;"></canvas>
+        </div>
+        <div style="position: relative; width: 100%; height: 200px;">
+            <canvas id="pieChart" style="position: absolute; top: 0; left: 0;"></canvas>
+        </div>
+
+        <div id="spendingHistory" class="card" style="display:none;">
+            <div class="card-body">
+                <h5 class="card-title">Transaction History</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Transaction Hash</th>
+                            <th>Amount (ETH)</th>
+                            <th>To</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody">
+                        <!-- Transaction rows will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
