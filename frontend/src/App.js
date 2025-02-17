@@ -1,14 +1,16 @@
 // src/App.js
 import React, { useState } from 'react';
+import Chart from 'chart.js/auto'; // Import Chart.js
+import { format } from 'date-fns'; // Import date-fns for date formatting
 
-const API_URL = "https://onchain-dashboard.onrender.com";  // ✅ Updated API URL
+const API_URL = "https://onchain-dashboard.onrender.com";  // Updated API URL
 
 const App = () => {
     const [balanceInEth, setBalanceInEth] = useState(0);
     const [balanceInUSD, setBalanceInUSD] = useState(0);
     const [balanceInINR, setBalanceInINR] = useState(0);
     const [currency, setCurrency] = useState('USD');
-    const [, setTransactions] = useState([]);
+    const [transactions, setTransactions] = useState([]);
 
     const fetchData = async () => {
         const addressInput = document.getElementById('walletAddress');
@@ -19,7 +21,7 @@ const App = () => {
         const address = addressInput.value;
 
         try {
-            const response = await fetch(`${API_URL}/api/wallet/${address}`);  // ✅ Updated API call
+            const response = await fetch(`${API_URL}/api/wallet/${address}`);  // Updated API call
             const data = await response.json();
 
             if (response.ok) {
@@ -56,13 +58,70 @@ const App = () => {
     };
 
     const renderCandlestickChart = (transactions) => {
-        console.log("Rendering candlestick chart...", transactions);
-        // Chart rendering logic will go here
+        const ctx = document.getElementById('candlestickChart').getContext('2d');
+        const labels = transactions.map(tx => new Date(tx.timeStamp * 1000).toLocaleDateString());
+        const prices = transactions.map(tx => parseFloat(tx.value) / 1e18); // Convert Wei to Ether
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Price Action',
+                    data: prices,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
     };
 
     const renderPieChart = (transactions) => {
-        console.log("Rendering pie chart...", transactions);
-        // Chart rendering logic will go here
+        const categories = {
+            DEX: 0,
+            Staking: 0,
+            Mining: 0,
+            Others: 0
+        };
+
+        transactions.forEach(tx => {
+            // Dummy categorization logic
+            if (tx.to === '0xYourDexAddress') {
+                categories.DEX += parseFloat(tx.value) / 1e18;
+            } else if (tx.to === '0xYourStakingAddress') {
+                categories.Staking += parseFloat(tx.value) / 1e18;
+            } else if (tx.to === '0xYourMiningAddress') {
+                categories.Mining += parseFloat(tx.value) / 1e18;
+            } else {
+                categories.Others += parseFloat(tx.value) / 1e18;
+            }
+        });
+
+        const ctx = document.getElementById('pieChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(categories),
+                datasets: [{
+                    data: Object.values(categories),
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
     };
 
     return (
@@ -87,6 +146,39 @@ const App = () => {
                         <option value="INR">INR</option>
                     </select>
                     <p style={{ marginTop: '10px' }}>Balance in Ether: {balanceInEth} ETH</p>
+                </div>
+            </div>
+
+            <div style={{ position: 'relative', width: '100%', height: '300px', marginTop: '20px' }}>
+                <canvas id="candlestickChart" style={{ position: 'absolute', top: 0, left: 0 }}></canvas>
+            </div>
+            <div style={{ position: 'relative', width: '100%', height: '200px', marginTop: '20px' }}>
+                <canvas id="pieChart" style={{ position: 'absolute', top: 0, left: 0 }}></canvas>
+            </div>
+
+            <div className="card" style={{ marginTop: '20px' }}>
+                <div className="card-body">
+                <h5 className="card-title">Transaction History</h5>
+                    <table className="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Transaction Hash</th>
+                                <th>Amount (ETH)</th>
+                                <th>To</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {transactions.map(tx => (
+                                <tr key={tx.hash}>
+                                    <td>{tx.hash}</td>
+                                    <td>{(parseFloat(tx.value) / 1e18).toFixed(4)}</td>
+                                    <td>{tx.to}</td>
+                                    <td>{format(new Date(tx.timeStamp * 1000), 'dd/MM/yyyy')}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
