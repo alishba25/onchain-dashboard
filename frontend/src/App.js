@@ -8,6 +8,7 @@ const App = () => {
     const [balanceInUSD, setBalanceInUSD] = useState(0);
     const [balanceInINR, setBalanceInINR] = useState(0);
     const [currency, setCurrency] = useState('USD');
+    const [, setTransactions] = useState([]);
 
     const fetchData = async () => {
         const addressInput = document.getElementById('walletAddress');
