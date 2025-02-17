@@ -1,7 +1,5 @@
 // src/App.js
 import React, { useState } from 'react';
-import Chart from 'chart.js/auto'; // Import Chart.js
-import { format } from 'date-fns'; // Import date-fns for date formatting
 
 const API_URL = "https://onchain-dashboard.onrender.com";  // ✅ Updated API URL
 
@@ -13,22 +11,33 @@ const App = () => {
     const [transactions, setTransactions] = useState([]);
 
     const fetchData = async () => {
-        const address = document.getElementById('walletAddress').value;
-        const response = await fetch(`${API_URL}/api/wallet/${address}`);  // ✅ Updated API call
-        const data = await response.json();
+        const addressInput = document.getElementById('walletAddress');
+        if (!addressInput || !addressInput.value) {
+            alert("Please enter a valid Ethereum wallet address.");
+            return;
+        }
+        const address = addressInput.value;
 
-        if (response.ok) {
-            const balance = data.balance / 1e18; // Convert Wei to Ether
-            setBalanceInEth(balance);
-            await fetchConversionRates(balance);
-            setTransactions(data.transactions); // Store transactions for rendering
-            document.getElementById('walletBalance').style.display = 'block';
+        try {
+            const response = await fetch(`${API_URL}/api/wallet/${address}`);  // ✅ Updated API call
+            const data = await response.json();
 
-            // Call functions to render charts
-            renderCandlestickChart(data.transactions);
-            renderPieChart(data.transactions);
-        } else {
-            alert('Error fetching wallet data: ' + data.error);
+            if (response.ok) {
+                const balance = data.balance / 1e18; // Convert Wei to Ether
+                setBalanceInEth(balance);
+                await fetchConversionRates(balance);
+                setTransactions(data.transactions || []); // Ensure transactions is always an array
+                document.getElementById('walletBalance').style.display = 'block';
+
+                // Call functions to render charts
+                renderCandlestickChart(data.transactions || []);
+                renderPieChart(data.transactions || []);
+            } else {
+                alert('Error fetching wallet data: ' + data.error);
+            }
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            alert("Failed to fetch wallet data. Please try again later.");
         }
     };
 
@@ -36,8 +45,8 @@ const App = () => {
         try {
             const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd,inr');
             const data = await response.json();
-            const ethToUSD = data.ethereum.usd;
-            const ethToINR = data.ethereum.inr;
+            const ethToUSD = data?.ethereum?.usd || 0;
+            const ethToINR = data?.ethereum?.inr || 0;
 
             setBalanceInUSD((balance * ethToUSD).toFixed(2));
             setBalanceInINR((balance * ethToINR).toFixed(2));
@@ -48,12 +57,12 @@ const App = () => {
 
     const renderCandlestickChart = (transactions) => {
         console.log("Rendering candlestick chart...", transactions);
-        // Your chart logic here
+        // Chart rendering logic will go here
     };
 
     const renderPieChart = (transactions) => {
         console.log("Rendering pie chart...", transactions);
-        // Your chart logic here
+        // Chart rendering logic will go here
     };
 
     return (
