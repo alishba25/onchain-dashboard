@@ -129,7 +129,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Contact
 For questions or suggestions, contact:
 - **Email:** alishba25ansari@gmail.com
-- **Twitter:** [@alishba25](https://twitter.com/alishba25)
+- **Twitter:** [@___alishba___](https://twitter.com/___alishba___)
 
 ## Acknowledgments
 - Thanks to Etherscan and CoinGecko for their APIs that power this dashboard.
