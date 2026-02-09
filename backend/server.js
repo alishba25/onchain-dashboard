@@ -1,35 +1,65 @@
 // backend/server.js
 const express = require('express');
-const axios = require('axios');
 const cors = require('cors');
+const { ethers } = require('ethers'); // Ensure ethers is installed: npm install ethers
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// Initialize Provider (Connects to Ethereum Mainnet)
+// It will use keys from your .env file automatically if named correctly (e.g., ETHERSCAN_API_KEY)
+const provider = ethers.getDefaultProvider("mainnet", {
+    etherscan: process.env.ETHERSCAN_API_KEY,
+    infura: process.env.INFURA_API_KEY,
+    alchemy: process.env.ALCHEMY_API_KEY,
+});
+
+// Route: Get Wallet Details
 app.get('/api/wallet/:address', async (req, res) => {
-    const address = req.params.address;
-    const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
+    const { address } = req.params;
 
     try {
-        // Fetch wallet balance
-        const balanceResponse = await axios.get(`https://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest&apikey=${etherscanApiKey}`);
-        const balance = balanceResponse.data.result;
+        // 1. Validate Address
+        if (!ethers.isAddress(address)) {
+            return res.status(400).json({ error: "Invalid Ethereum address format." });
+        }
 
-        // Fetch transaction history
-        const txResponse = await axios.get(`https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${etherscanApiKey}`);
-        const transactions = txResponse.data.result;
+        // 2. Fetch Data in Parallel for Speed
+        const [balanceBigInt, txCount, network] = await Promise.all([
+            provider.getBalance(address),
+            provider.getTransactionCount(address),
+            provider.getNetwork()
+        ]);
 
-        res.json({ balance, transactions });
+        // 3. Format Data
+        const balanceEth = ethers.formatEther(balanceBigInt);
+
+        res.json({
+            success: true,
+            data: {
+                address,
+                balance: balanceEth,
+                transactionCount: txCount,
+                network: network.name,
+                currency: "ETH"
+            }
+        });
+
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Error fetching wallet data');
+        console.error("Error fetching wallet data:", error);
+        res.status(500).json({ 
+            success: false, 
+            error: "Failed to fetch on-chain data. Please check the address or try again later." 
+        });
     }
 });
 
+// Start Server
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`✅ Server running on http://localhost:${PORT}`);
 });
