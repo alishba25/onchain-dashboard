@@ -1,188 +1,113 @@
-// src/App.js
+// frontend/src/App.js
 import React, { useState } from 'react';
-import Chart from 'chart.js/auto'; // Import Chart.js
-import { format } from 'date-fns'; // Import date-fns for date formatting
+import axios from 'axios';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Doughnut } from 'react-chartjs-2';
+import './App.css';
 
-const API_URL = "https://onchain-dashboard.onrender.com";  // Updated API URL
+// Register ChartJS components
+ChartJS.register(ArcElement, Tooltip, Legend);
 
-const App = () => {
-    const [balanceInEth, setBalanceInEth] = useState(0);
-    const [balanceInUSD, setBalanceInUSD] = useState(0);
-    const [balanceInINR, setBalanceInINR] = useState(0);
-    const [currency, setCurrency] = useState('USD');
-    const [transactions, setTransactions] = useState([]);
+const API_URL = "http://localhost:5000/api/wallet";
 
-    const fetchData = async () => {
-        const addressInput = document.getElementById('walletAddress');
-        if (!addressInput || !addressInput.value) {
-            alert("Please enter a valid Ethereum wallet address.");
-            return;
-        }
-        const address = addressInput.value;
+function App() {
+  const [address, setAddress] = useState('');
+  const [walletData, setWalletData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-        try {
-            const response = await fetch(`${API_URL}/api/wallet/${address}`);  // Updated API call
-            const data = await response.json();
+  const fetchWalletData = async (e) => {
+    e.preventDefault();
+    if (!address) return;
 
-            if (response.ok) {
-                const balance = data.balance / 1e18; // Convert Wei to Ether
-                setBalanceInEth(balance);
-                await fetchConversionRates(balance);
-                setTransactions(data.transactions || []); // Ensure transactions is always an array
-                document.getElementById('walletBalance').style.display = 'block';
+    setLoading(true);
+    setError(null);
+    setWalletData(null);
 
-                // Call functions to render charts
-                renderCandlestickChart(data.transactions || []);
-                renderPieChart(data.transactions || []);
-            } else {
-                alert('Error fetching wallet data: ' + data.error);
-            }
-        } catch (error) {
-            console.error("Error fetching data:", error);
-            alert("Failed to fetch wallet data. Please try again later.");
-        }
-    };
+    try {
+      const response = await axios.get(`${API_URL}/${address}`);
+      setWalletData(response.data.data);
+    } catch (err) {
+      setError(err.response?.data?.error || "An error occurred while connecting to the server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const fetchConversionRates = async (balance) => {
-        try {
-            const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd,inr');
-            const data = await response.json();
-            const ethToUSD = data?.ethereum?.usd || 0;
-            const ethToINR = data?.ethereum?.inr || 0;
+  // Chart Data Configuration
+  const chartData = {
+    labels: ['Balance (ETH)', 'Transaction Fees (Est)', 'Other Assets'],
+    datasets: [
+      {
+        label: 'Portfolio Distribution',
+        data: walletData ? [parseFloat(walletData.balance), parseFloat(walletData.balance) * 0.05, 0] : [],
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.6)',
+          'rgba(255, 99, 132, 0.6)',
+          'rgba(255, 206, 86, 0.6)',
+        ],
+        borderColor: [
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 99, 132, 1)',
+          'rgba(255, 206, 86, 1)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
 
-            setBalanceInUSD((balance * ethToUSD).toFixed(2));
-            setBalanceInINR((balance * ethToINR).toFixed(2));
-        } catch (error) {
-            console.error('Error fetching conversion rates:', error);
-        }
-    };
+  return (
+    <div className="App">
+      <header className="App-header">
+        <h1>Onchain Dashboard</h1>
+        <p className="subtitle">Visualize Ethereum Wallet Data</p>
+      </header>
 
-    const renderCandlestickChart = (transactions) => {
-        const ctx = document.getElementById('candlestickChart').getContext('2d');
-        const labels = transactions.map(tx => new Date(tx.timeStamp * 1000).toLocaleDateString());
-        const prices = transactions.map(tx => parseFloat(tx.value) / 1e18); // Convert Wei to Ether
+      <main className="dashboard-container">
+        <form onSubmit={fetchWalletData} className="search-form">
+          <input
+            type="text"
+            placeholder="Enter Ethereum Address (0x...)"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="address-input"
+          />
+          <button type="submit" className="search-btn" disabled={loading}>
+            {loading ? 'Scanning...' : 'Analyze Wallet'}
+          </button>
+        </form>
 
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Price Action',
-                    data: prices,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 2,
-                    fill: false
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    };
+        {error && <div className="error-message">{error}</div>}
 
-    const renderPieChart = (transactions) => {
-        const categories = {
-            DEX: 0,
-            Staking: 0,
-            Mining: 0,
-            Others: 0
-        };
-
-        transactions.forEach(tx => {
-            // Dummy categorization logic
-            if (tx.to === '0xYourDexAddress') {
-                categories.DEX += parseFloat(tx.value) / 1e18;
-            } else if (tx.to === '0xYourStakingAddress') {
-                categories.Staking += parseFloat(tx.value) / 1e18;
-            } else if (tx.to === '0xYourMiningAddress') {
-                categories.Mining += parseFloat(tx.value) / 1e18;
-            } else {
-                categories.Others += parseFloat(tx.value) / 1e18;
-            }
-        });
-
-        const ctx = document.getElementById('pieChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: Object.keys(categories),
-                datasets: [{
-                    data: Object.values(categories),
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-    };
-
-    return (
-        <div className="container">
-            <h1 className="text-center">Ethereum Wallet Dashboard</h1>
-            <div className="form-group">
-                <label htmlFor="walletAddress">Enter Ethereum Wallet Address:</label>
-                <input type="text" id="walletAddress" className="form-control" placeholder="0x..." />
-            </div>
-            <button id="fetchData" className="btn btn-primary" onClick={fetchData}>
-                Fetch Wallet Data
-            </button>
-
-            <div id="walletBalance" className="card" style={{ display: 'none', marginTop: '20px' }}>
-                <div className="card-body">
-                    <h5 className="card-title">Wallet Balance:</h5>
-                    <p>
-                        {currency === 'USD' ? `$${balanceInUSD}` : `₹${balanceInINR}`}
-                    </p>
-                    <select id="currency" className="form-control" onChange={(e) => setCurrency(e.target.value)} value={currency}>
-                        <option value="USD">USD</option>
-                        <option value="INR">INR</option>
-                    </select>
-                    <p style={{ marginTop: '10px' }}>Balance in Ether: {balanceInEth} ETH</p>
-                </div>
+        {walletData && (
+          <div className="results-grid">
+            <div className="card overview-card">
+              <h3>Overview</h3>
+              <div className="stat-item">
+                <span className="label">Network</span>
+                <span className="value">{walletData.network}</span>
+              </div>
+              <div className="stat-item">
+                <span className="label">Transactions</span>
+                <span className="value">{walletData.transactionCount}</span>
+              </div>
+              <div className="stat-item highlight">
+                <span className="label">Balance</span>
+                <span className="value">{parseFloat(walletData.balance).toFixed(4)} ETH</span>
+              </div>
             </div>
 
-            <div style={{ position: 'relative', width: '100%', height: '300px', marginTop: '20px' }}>
-                <canvas id="candlestickChart" style={{ position: 'absolute', top: 0, left: 0 }}></canvas>
+            <div className="card chart-card">
+              <h3>Asset Allocation</h3>
+              <div className="chart-container">
+                <Doughnut data={chartData} />
+              </div>
             </div>
-            <div style={{ position: 'relative', width: '100%', height: '200px', marginTop: '20px' }}>
-                <canvas id="pieChart" style={{ position: 'absolute', top: 0, left: 0 }}></canvas>
-            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
 
-            <div className="card" style={{ marginTop: '20px' }}>
-                <div className="card-body">
-                <h5 className="card-title">Transaction History</h5>
-                    <table className="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Transaction Hash</th>
-                                <th>Amount (ETH)</th>
-                                <th>To</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {transactions.map(tx => (
-                                <tr key={tx.hash}>
-                                    <td>{tx.hash}</td>
-                                    <td>{(parseFloat(tx.value) / 1e18).toFixed(4)}</td>
-                                    <td>{tx.to}</td>
-                                    <td>{format(new Date(tx.timeStamp * 1000), 'dd/MM/yyyy')}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default App; // Ensure to export the App component
+export default App;
